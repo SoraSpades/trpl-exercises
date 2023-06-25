@@ -1,7 +1,7 @@
 use minigrep::Config;
 
 fn main() {
-    let config = Config::new(&(std::env::args().collect())).unwrap_or_else(|err| {
+    let config = Config::new(std::env::args()).unwrap_or_else(|err| {
         eprintln!("{}", err);
         std::process::exit(1);
     });

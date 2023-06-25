@@ -3,9 +3,9 @@ use Mode::*;
 
 #[derive(Debug)]
 enum Mode {
-    CASE_SENSITIVE,
-    CASE_INSENSITIVE,
-    REGEX,
+    CaseSensitive,
+    CaseInsensitive,
+    Regex,
 }
 
 #[derive(Debug)]
@@ -16,26 +16,30 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &Vec<String>) -> Result<Config, &str> {
-        if args.len() < 3 {
-            return Err("Not enough arguments");
-        }
+    pub fn new(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        args.next();
 
-        let str_mode = args.get(3).expect("Error parsing config").as_str();
-        if !vec!["case_insensitive", "case_sensitive", "regex"].contains(&str_mode) {
-            return Err("Invalid Mode");
-        }
+        let query = match args.next() {
+            Some(q) => q,
+            None => return Err("Didn't specify query")
+        };
 
-        Ok(Config {
-            query: args.get(1).expect("Error parsing config").clone(),
-            file: args.get(2).expect("Error parsing config").clone(),
-            mode: match args.get(3).expect("Error parsing config").as_str() {
-                "case_insensitive" => Mode::CASE_INSENSITIVE,
-                "case_sensitive" => Mode::CASE_SENSITIVE,
-                "regex" => Mode::REGEX,
-                _ => panic!("Invalid code reached"),
-            },
-        })
+        let file = match args.next() {
+            Some(f) => f,
+            None => return Err("Didn't specify file")
+        };
+
+        let mode = match args.next() {
+            Some(m) => match m.as_str() {
+                "case_insensitive" => Mode::CaseInsensitive,
+                "case_sensitive" => Mode::CaseSensitive,
+                "regex" => Mode::Regex,
+                _ => return Err("Invalid mode. Must be 'case_insensitive', 'case_sensitive' or 'regex'")
+            }
+            None => Mode::CaseInsensitive
+        };
+
+        Ok(Config { query, file, mode })
     }
 }
 
@@ -48,7 +52,7 @@ fn search_case_sensitive<'a>(query: &str, text: &'a str) -> Vec<&'a str> {
         }
     }
 
-    return v;
+    v
 }
 
 fn search_case_insensitive<'a>(query: &str, text: &'a str) -> Vec<&'a str> {
@@ -61,7 +65,7 @@ fn search_case_insensitive<'a>(query: &str, text: &'a str) -> Vec<&'a str> {
         }
     }
 
-    return v;
+    v
 }
 
 fn search_regex<'a>(query: &str, text: &'a str) -> Vec<&'a str> {
@@ -82,9 +86,9 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let text = fs::read_to_string(config.file)?;
 
     let results: Vec<&str> = match config.mode {
-        CASE_INSENSITIVE => search_case_insensitive(&config.query, &text),
-        CASE_SENSITIVE => search_case_sensitive(&config.query, &text),
-        REGEX => search_regex(&config.query, &text),
+        CaseInsensitive => search_case_insensitive(&config.query, &text),
+        CaseSensitive => search_case_sensitive(&config.query, &text),
+        Regex => search_regex(&config.query, &text),
     };
 
     for l in results {
